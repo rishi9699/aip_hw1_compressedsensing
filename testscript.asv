@@ -56,13 +56,8 @@ for w=0:num_frames-1
                 for m=0:patch_size-1
                     temp = (t+1 * m+1);
                     for n=0:patch_size-1
-                        psi(row_number, temp*(n+1)) = coeff * cos((pi*(2*n+1)*u)/patch_size) * cos((pi*(2*m+1)*v)/patch_size) * cos((pi*(2*t+1)*w)/num_frames);
-                    end
-                end
-            end
-        end
-    end
-end
+                        psi(row_number, temp*(n+1)) = coeff * cos((pi*(2*n+1)*u)/patch_size) * cos((pi*(2*m+1)*v)/patch_size) * cos((pi*(2*n+1)*u)/patch_size);
+                        
             coeff = 1/sqrt(num_frames*path_size*patch_size);
 
 
