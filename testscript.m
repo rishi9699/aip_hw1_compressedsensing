@@ -18,9 +18,8 @@ imshow(frames(:,:,3))
 random_pattern = uint8(binornd(1,0.5,num_rows,num_columns,num_frames));
 
 % Computing coded snapshot
-summand_matrices = frames.*random_pattern;
-coded_snapshot = uint8(sum(summand_matrices, 3));
-imshow(coded_snapshot);
+coded_snapshot = sum(frames.*random_pattern, 3);
+imshow(uint16(coded_snapshot));
 
 
 %%
@@ -28,7 +27,7 @@ imshow(coded_snapshot);
 patch_size=8;
 block_size = patch_size^2;
 
-% Constructing the 3D DCT psi matrix
+%% Constructing the 3D DCT psi matrix
 psi = zeros(block_size*num_frames, block_size*num_frames);
 
 const_coeff = 1/sqrt(num_frames*patch_size*patch_size);
@@ -70,13 +69,38 @@ for w=0:num_frames-1
     end
 end
 
-patch_start_row = 10;
-patch_start_column = 10;
+%%
+patch_start_row = 120;
+patch_start_column = 240;
 
-% Constructing the phi matrix
+%% Constructing the phi matrix
 phi = zeros(block_size, block_size*num_frames);
 for i=0:num_frames-1
     phi(:, (i*block_size+1):(i+1)*block_size) = diag(reshape(random_pattern(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,i+1),[block_size,1]));
 end
 
+% Implementing OMP
+indices = zeros(1, block_size);
+support_set = zeros(block_size, block_size);
+
 A=phi*psi;
+normalized_A = normc(A);
+measurement = reshape(coded_snapshot(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1), [block_size,1]);
+residual = measurement;
+for iter=1:block_size
+    [~, i] = max(abs(residual.'*normalized_A));
+    indices(iter) = i;
+    support_set(:,iter) = A(:, i);
+    theta = pinv( support_set(:,1:iter) ) * measurement;
+    residual = measurement - support_set(:,1:iter) * theta;
+end
+
+x = zeros(block_size*num_frames, 1);
+for pos=1:block_size
+    x(indices(pos)) = theta(pos);
+end
+f = psi*x;
+f=reshape(f, [patch_size, patch_size, num_frames]);
+
+
+frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,1) - f(:,:,1) %dont use uint8 has limit of 255
