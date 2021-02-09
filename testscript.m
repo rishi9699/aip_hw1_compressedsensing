@@ -2,10 +2,10 @@ num_rows = 120; % 288
 num_columns = 210; % 352
 num_frames=3;
 
-video=mmread('../HW1/cars.avi');
+video=mmread('./HW1/cars.avi');
 frames = zeros(num_rows, num_columns, num_frames);
 for i=1:num_frames
-    frames(:,:,i) = im2gray(video.frames(i).cdata(169:288, 143:352));
+    frames(:,:,i) = rgb2gray(video.frames(i).cdata(169:288, 143:352,:));
     %frames(:,:,i) = im2gray(video.frames(i).cdata);
 end
 
@@ -23,7 +23,7 @@ random_pattern(:,:,3) = ~random_pattern(:,:,1);
 
 % Computing coded snapshot
 coded_snapshot = sum(frames.*random_pattern, 3);
-imshow(uint8(coded_snapshot/3));
+imshow(uint8(coded_snapshot/num_frames));
 
 
 %%
@@ -109,7 +109,8 @@ for patch_start_row = 1:(num_rows-patch_size+1) % Iterating over all possible pa
         for pos=1:block_size
             x(indices(pos)) = theta(pos);
         end
-        f = psi*x; % DCT forward formula ?
+        %f = psi*x; % DCT forward formula ?
+        f = sum(psi.*x);
         f=reshape(f, [patch_size, patch_size, num_frames]); % Patch frames in the Dirac basis
         f = permute(f, [2 1 3]);
 
