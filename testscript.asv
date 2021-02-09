@@ -27,7 +27,7 @@ imshow(uint16(coded_snapshot));
 patch_size=8;
 block_size = patch_size^2;
 
-% Constructing the 3D DCT psi matrix
+%% Constructing the 3D DCT psi matrix
 psi = zeros(block_size*num_frames, block_size*num_frames);
 
 const_coeff = 1/sqrt(num_frames*patch_size*patch_size);
@@ -69,16 +69,19 @@ for w=0:num_frames-1
     end
 end
 
+%%
+reconstructed_frames = zeros(num_rows, num_columns, num_frames);
 
-patch_start_row = 120;
-patch_start_column = 240;
+for patch_start_row = 1:(num_rows+patch_size-1)
+    for patch_start_column = 1:(num_columns+patch_size-1)
+        
 
-% Constructing the phi matrix
-phi = zeros(block_size, block_size*num_frames);
+phi = zeros(block_size, block_size*num_frames); %% Constructing the phi matrix
 for i=0:num_frames-1
     phi(:, (i*block_size+1):(i+1)*block_size) = diag(reshape(random_pattern(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,i+1),[block_size,1]));
 end
 
+% Implementing OMP
 indices = zeros(1, block_size);
 support_set = zeros(block_size, block_size);
 
@@ -100,6 +103,19 @@ for pos=1:block_size
 end
 f = psi*x;
 f=reshape(f, [patch_size, patch_size, num_frames]);
+
+% Rejoining the patches
+all_weights = zeros(num_rows, num_columns);
+
+weights = all_weights(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1);
+
+reconstructed_frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,:) ...
+ = (reconstructed_frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,:) .* (weights./(weights+1))) + (f ./ (weights+1));
+
+all_weights(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1) ...
+    = (weights+1);
+
+%%
 
 
 frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,1) - f(:,:,1) %dont use uint8 has limit of 255

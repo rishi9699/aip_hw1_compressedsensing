@@ -70,37 +70,50 @@ for w=0:num_frames-1
 end
 
 %%
-patch_start_row = 120;
-patch_start_column = 240;
-
-%% Constructing the phi matrix
+reconstructed_frames = zeros(num_rows, num_columns, num_frames);
 phi = zeros(block_size, block_size*num_frames);
-for i=0:num_frames-1
-    phi(:, (i*block_size+1):(i+1)*block_size) = diag(reshape(random_pattern(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,i+1),[block_size,1]));
+all_weights = zeros(num_rows, num_columns);
+
+for patch_start_row = 1:(num_rows+patch_size-1) % Iterating over all possible patches
+    for patch_start_column = 1:(num_columns+patch_size-1)
+        
+
+        % Constructing the phi matrix
+        for i=0:num_frames-1
+            phi(:, (i*block_size+1):(i+1)*block_size) = diag(reshape(random_pattern(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,i+1),[block_size,1]));
+        end
+
+        % Implementing OMP
+        indices = zeros(1, block_size);
+        support_set = zeros(block_size, block_size);
+
+        A=phi*psi;
+        normalized_A = normc(A);
+        measurement = reshape(coded_snapshot(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1), [block_size,1]);
+        residual = measurement;
+        for iter=1:block_size
+            [~, i] = max(abs(residual.'*normalized_A));
+            indices(iter) = i;
+            support_set(:,iter) = A(:, i);
+            theta = pinv( support_set(:,1:iter) ) * measurement;
+            residual = measurement - support_set(:,1:iter) * theta;
+        end
+        
+        % Converting signal from DCT basis to Dirac basis
+        x = zeros(block_size*num_frames, 1);
+        for pos=1:block_size
+            x(indices(pos)) = theta(pos);
+        end
+        f = psi*x;
+        f=reshape(f, [patch_size, patch_size, num_frames]); % Patch frames in the Dirac basis
+
+        % Rejoining the patches
+        weights = all_weights(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1);
+
+        reconstructed_frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,:) ...
+         = (reconstructed_frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,:) .* (weights./(weights+1))) + (f ./ (weights+1));
+
+        all_weights(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1) ...
+            = (weights+1);
+    end
 end
-
-% Implementing OMP
-indices = zeros(1, block_size);
-support_set = zeros(block_size, block_size);
-
-A=phi*psi;
-normalized_A = normc(A);
-measurement = reshape(coded_snapshot(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1), [block_size,1]);
-residual = measurement;
-for iter=1:block_size
-    [~, i] = max(abs(residual.'*normalized_A));
-    indices(iter) = i;
-    support_set(:,iter) = A(:, i);
-    theta = pinv( support_set(:,1:iter) ) * measurement;
-    residual = measurement - support_set(:,1:iter) * theta;
-end
-
-x = zeros(block_size*num_frames, 1);
-for pos=1:block_size
-    x(indices(pos)) = theta(pos);
-end
-f = psi*x;
-f=reshape(f, [patch_size, patch_size, num_frames]);
-
-
-frames(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1,1) - f(:,:,1) %dont use uint8 has limit of 255
