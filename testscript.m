@@ -1,8 +1,8 @@
 num_rows = 120; % 288
 num_columns = 210; % 352
-num_frames=3;
+num_frames=5;
 
-video=mmread('./HW1/cars.avi');
+video=mmread('./HW1/flame.avi');
 frames = zeros(num_rows, num_columns, num_frames);
 for i=1:num_frames
     frames(:,:,i) = rgb2gray(video.frames(i).cdata(169:288, 143:352,:));
@@ -15,11 +15,11 @@ imshow(uint8(frames(:,:,2)))
 figure
 imshow(frames(:,:,3))
 
-%random_pattern = binornd(1,0.7,num_rows,num_columns,num_frames);
-random_pattern = zeros(num_rows,num_columns,num_frames);
-random_pattern(:,:,2) = ones(num_rows,num_columns);
-random_pattern(:,:,1) = binornd(1,0.5,num_rows,num_columns);
-random_pattern(:,:,3) = ~random_pattern(:,:,1);
+random_pattern = binornd(1,0.5,num_rows,num_columns,num_frames);
+% random_pattern = zeros(num_rows,num_columns,num_frames);
+% random_pattern(:,:,2) = ones(num_rows,num_columns);
+% random_pattern(:,:,1) = binornd(1,0.5,num_rows,num_columns);
+% random_pattern(:,:,3) = ~random_pattern(:,:,1);
 
 % Computing coded snapshot
 coded_snapshot = sum(frames.*random_pattern, 3);
