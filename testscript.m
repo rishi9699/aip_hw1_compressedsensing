@@ -1,6 +1,6 @@
 num_rows = 120; 
 num_columns = 210; % Using a 120x210 window
-num_frames=7;
+num_frames=3;
 
 video=mmread('./HW1/cars.avi');
 frames = zeros(num_rows, num_columns, num_frames);
@@ -8,10 +8,10 @@ for i=1:num_frames
     frames(:,:,i) = rgb2gray(video.frames(i).cdata(169:288, 143:352,:));
 end
 
-random_pattern = binornd(1,0.5,num_rows,num_columns,num_frames);
+random_pattern = binornd(1,0.7,num_rows,num_columns,num_frames);
 
 % Computing coded snapshot
-coded_snapshot = sum(frames.*random_pattern, 3) + randn(num_rows,num_columns); % Adding Gaussian Random Noise
+coded_snapshot = sum(frames.*random_pattern, 3) %+ 2*randn(num_rows,num_columns); % Adding Gaussian Random Noise
 imshow(uint8(coded_snapshot/num_frames)); % Display coded snapshot
 
 
@@ -83,17 +83,25 @@ for patch_start_row = 1:(num_rows-patch_size+1) % Iterating over all possible pa
         normalized_A = normc(A);
         measurement = reshape(coded_snapshot(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1).', [1,block_size]).';
         residual = measurement;
-        for iter=1:block_size % Running the OMP algorithm for a maximum of block_size iterations for well-defined pseudo inverse
+        
+        iter=1;
+        norm_residual=2305;
+        while norm_residual>600 && iter<(block_size+1)
+        %for iter=1:block_size % Running the OMP algorithm for a maximum of block_size iterations for well-defined pseudo inverse
             [~, i] = max(abs(residual.'*normalized_A));
             indices(iter) = i;
             support_set(:,iter) = A(:, i);
             theta = pinv( support_set(:,1:iter) ) * measurement;
             residual = measurement - support_set(:,1:iter) * theta;
+            norm_residual = norm(residual);
+            iter = iter + 1;
+        %end
         end
         
+        iter = iter - 1;
         % Converting signal from DCT basis to Dirac basis
         x = zeros(block_size*num_frames, 1);
-        for pos=1:block_size
+        for pos=1:iter
             x(indices(pos)) = theta(pos);
         end
         %f = psi*x; % DCT forward formula ?
@@ -110,6 +118,7 @@ for patch_start_row = 1:(num_rows-patch_size+1) % Iterating over all possible pa
         all_weights(patch_start_row:patch_start_row+patch_size-1,patch_start_column:patch_start_column+patch_size-1) ...
             = (weights+1);
     end
+    disp(patch_start_row)
 end
 
 for p=1:num_frames % Displaying the recostructed frames
@@ -117,7 +126,7 @@ for p=1:num_frames % Displaying the recostructed frames
     imshow(uint8(reconstructed_frames(:,:,p)))
 end
 
-% Display RRMSE
-for p=1:num_frames
-    sqrt(sum((uint8(reconstructed_frames(:,:,p)) - uint8(frames(:,:,p))).^2))/sqrt(sum(uint8(frames(:,:,p)).^2))
-end
+% % Display RRMSE
+% for p=1:num_frames
+%     sqrt(sum((uint8(reconstructed_frames(:,:,p)) - uint8(frames(:,:,p))).^2))/sqrt(sum(uint8(frames(:,:,p)).^2))
+% end
